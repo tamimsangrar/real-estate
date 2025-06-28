@@ -24,7 +24,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
   const [showPhoneInput, setShowPhoneInput] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [isCallingAPI, setIsCallingAPI] = useState(false)
-  const [showInitialForm, setShowInitialForm] = useState(true)
+  const [showInitialForm, setShowInitialForm] = useState(false)
   const [isSavingLead, setIsSavingLead] = useState(false)
   const [leadFormData, setLeadFormData] = useState({
     name: '',
@@ -108,7 +108,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
 
   // Initialize chat with welcome message
   useEffect(() => {
-    if (isOpen && messages.length === 0 && !showInitialForm) {
+    if (isOpen && messages.length === 0) {
       const welcomeMessage: ChatMessage = {
         role: 'assistant',
         content: "Hey there! Are you excited to embark on your search for a new home? I am Roy, I will be your local real estate expert. How can i help you today?"
@@ -117,7 +117,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       setMessageCount(1)
       setChatCompleted(false)
     }
-  }, [isOpen, messages.length, showInitialForm])
+  }, [isOpen, messages.length])
 
   // Check if we should show call prompt at 30 messages
   useEffect(() => {
@@ -126,6 +126,14 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       setChatCompleted(true)
     }
   }, [messageCount, showCallPrompt])
+
+  // Show lead form after first user message
+  useEffect(() => {
+    const userMessages = messages.filter(m => m.role === 'user')
+    if (userMessages.length === 1 && !showInitialForm && !showCallPrompt) {
+      setShowInitialForm(true)
+    }
+  }, [messages, showInitialForm, showCallPrompt])
 
   const sendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return
@@ -149,8 +157,8 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
     setMessageCount(prev => prev + 1)
 
     try {
-      // Create lead if this is the first message
-      if (!leadId) {
+      // Create lead if this is the first message and form is not showing
+      if (!leadId && !showInitialForm) {
         const { data: lead, error } = await supabase
           .from('leads')
           .insert([{
@@ -178,7 +186,8 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       console.log('🔄 Sending chat request...', {
         messageCount: messageCount + 1,
         messagesLength: allMessages.length,
-        leadInfo: Object.keys(leadInfo)
+        leadInfo: Object.keys(leadInfo),
+        showInitialForm
       })
 
       const response = await fetch('/api/chat', {
@@ -339,9 +348,33 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
         urgency: leadFormData.urgency
       })
 
-      // Update lead with collected information
-      if (leadId) {
-        const { error } = await supabase
+      // Create or update lead
+      let currentLeadId = leadId
+      if (!currentLeadId) {
+        const { data: lead, error: createError } = await supabase
+          .from('leads')
+          .insert([{
+            name: leadFormData.name,
+            email: leadFormData.email,
+            phone: leadFormData.phone,
+            rent_or_buy: leadFormData.rent_or_buy as 'rent' | 'buy',
+            area: leadFormData.areas.join(', '),
+            amenities: leadFormData.amenities,
+            budget_range: leadFormData.budget_range,
+            urgency: leadFormData.urgency,
+            lead_score: score,
+            conversation_summary: messages.map(m => `${m.role}: ${m.content}`).join('\n'),
+            status: 'new'
+          }])
+          .select()
+          .single()
+
+        if (createError) throw createError
+        currentLeadId = lead.id
+        setLeadId(lead.id)
+      } else {
+        // Update existing lead
+        const { error: updateError } = await supabase
           .from('leads')
           .update({
             name: leadFormData.name,
@@ -356,30 +389,30 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
             conversation_summary: messages.map(m => `${m.role}: ${m.content}`).join('\n'),
             status: 'new'
           })
-          .eq('id', leadId)
+          .eq('id', currentLeadId)
 
-        if (error) throw error
-
-        // Set lead info for AI context
-        setLeadInfo({
-          name: leadFormData.name,
-          email: leadFormData.email,
-          phone: leadFormData.phone,
-          rent_or_buy: leadFormData.rent_or_buy as 'rent' | 'buy',
-          area: leadFormData.areas.join(', '),
-          amenities: leadFormData.amenities,
-          budget_range: leadFormData.budget_range,
-          urgency: leadFormData.urgency
-        })
-
-        // Add success message
-        const successMessage: ChatMessage = {
-          role: 'assistant',
-          content: `Perfect! Thank you for sharing your preferences. I have saved your information and your lead score is ${score}/10. Now let me help you find the perfect home that matches your criteria. What specific questions do you have about the market?`
-        }
-        setMessages(prev => [...prev, successMessage])
-        setShowInitialForm(false)
+        if (updateError) throw updateError
       }
+
+      // Set lead info for AI context
+      setLeadInfo({
+        name: leadFormData.name,
+        email: leadFormData.email,
+        phone: leadFormData.phone,
+        rent_or_buy: leadFormData.rent_or_buy as 'rent' | 'buy',
+        area: leadFormData.areas.join(', '),
+        amenities: leadFormData.amenities,
+        budget_range: leadFormData.budget_range,
+        urgency: leadFormData.urgency
+      })
+
+      // Add success message
+      const successMessage: ChatMessage = {
+        role: 'assistant',
+        content: `Perfect! Thank you for sharing your preferences. I have saved your information and your lead score is ${score}/10. Now let me help you find the perfect home that matches your criteria. What specific questions do you have about the market?`
+      }
+      setMessages(prev => [...prev, successMessage])
+      setShowInitialForm(false)
 
     } catch (error) {
       console.error('Error saving lead:', error)
