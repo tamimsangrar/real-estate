@@ -445,8 +445,13 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="fixed bottom-4 right-4 w-full max-w-md h-600 chat-window flex flex-col z-50"
-          style={{ width: 'calc(100vw - 2rem)', maxWidth: '500px' }}
+          className="fixed bottom-4 right-4 w-full max-w-md chat-window flex flex-col z-50"
+          style={{ 
+            width: 'calc(100vw - 2rem)', 
+            maxWidth: '500px',
+            maxHeight: '80vh',
+            height: 'auto'
+          }}
         >
           {/* Header */}
           <div className="chat-header">
