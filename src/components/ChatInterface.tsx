@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Send, Phone, AlertCircle, Download, User, Mail, MapPin, DollarSign, Calendar } from 'lucide-react'
+import { Send, Phone, AlertCircle, Download, User, Mail, MapPin, DollarSign, Calendar, Check } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChatMessage, LeadInfo } from '@/lib/ai'
 import { supabase } from '@/lib/supabase'
@@ -24,19 +24,72 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
   const [showPhoneInput, setShowPhoneInput] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [isCallingAPI, setIsCallingAPI] = useState(false)
-  const [showLeadCollection, setShowLeadCollection] = useState(false)
+  const [showInitialForm, setShowInitialForm] = useState(true)
   const [isSavingLead, setIsSavingLead] = useState(false)
   const [leadFormData, setLeadFormData] = useState({
     name: '',
     email: '',
     phone: '',
     rent_or_buy: '',
-    area: '',
-    amenities: '',
+    areas: [] as string[],
+    amenities: [] as string[],
     budget_range: '',
     urgency: ''
   })
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Available options for checkboxes
+  const areaOptions = [
+    'Downtown Vancouver',
+    'Westside Vancouver', 
+    'Eastside Vancouver',
+    'North Vancouver',
+    'South Vancouver',
+    'Burnaby',
+    'Richmond',
+    'Surrey',
+    'Coquitlam',
+    'New Westminster',
+    'White Rock',
+    'Delta'
+  ]
+
+  const amenityOptions = [
+    'Schools nearby',
+    'Parks & recreation',
+    'Restaurants & cafes',
+    'Gym/fitness center',
+    'Parking (included)',
+    'Public transit access',
+    'Shopping centers',
+    'Beach/ocean view',
+    'Balcony/patio',
+    'In-suite laundry',
+    'Pet friendly',
+    'Furnished'
+  ]
+
+  const budgetOptions = [
+    'Under $1,500/month',
+    '$1,500-$2,000/month',
+    '$2,000-$2,500/month', 
+    '$2,500-$3,000/month',
+    '$3,000-$4,000/month',
+    'Over $4,000/month',
+    'Under $500k',
+    '$500k-$750k',
+    '$750k-$1M',
+    '$1M-$1.5M',
+    'Over $1.5M'
+  ]
+
+  const urgencyOptions = [
+    'ASAP (within 1 month)',
+    'Within 3 months',
+    'Within 6 months',
+    'Flexible timeline',
+    'Just browsing'
+  ]
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -45,7 +98,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
 
   // Initialize chat with welcome message
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (isOpen && messages.length === 0 && !showInitialForm) {
       const welcomeMessage: ChatMessage = {
         role: 'assistant',
         content: "Hey there! Are you excited to embark on your search for a new home? I am Roy, I will be your local real estate expert. How can i help you today?"
@@ -54,7 +107,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       setMessageCount(1)
       setChatCompleted(false)
     }
-  }, [isOpen, messages.length])
+  }, [isOpen, messages.length, showInitialForm])
 
   // Check if we should show call prompt at 30 messages
   useEffect(() => {
@@ -63,25 +116,6 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       setChatCompleted(true)
     }
   }, [messageCount, showCallPrompt])
-
-  // Check if we should show lead collection card
-  useEffect(() => {
-    const hasEnoughInfo = leadInfo.name && leadInfo.email && leadInfo.rent_or_buy && leadInfo.area && leadInfo.budget_range
-    if (hasEnoughInfo && !showLeadCollection && messageCount >= 15) {
-      setShowLeadCollection(true)
-      // Pre-fill form with extracted data
-      setLeadFormData({
-        name: leadInfo.name || '',
-        email: leadInfo.email || '',
-        phone: leadInfo.phone || '',
-        rent_or_buy: leadInfo.rent_or_buy || '',
-        area: leadInfo.area || '',
-        amenities: leadInfo.amenities?.join(', ') || '',
-        budget_range: leadInfo.budget_range || '',
-        urgency: leadInfo.urgency || ''
-      })
-    }
-  }, [leadInfo, showLeadCollection, messageCount])
 
   const sendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return
@@ -209,94 +243,8 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
   }
 
   const extractLeadInfo = (messages: ChatMessage[]): LeadInfo => {
-    const info: LeadInfo = {}
-    
-    // Get the last few messages for better context
-    const recentMessages = messages.slice(-6).map(m => m.content).join(' ').toLowerCase()
-    const allMessages = messages.map(m => m.content).join(' ').toLowerCase()
-    
-    // Extract name (multiple patterns)
-    const namePatterns = [
-      /my name is (\w+)/i,
-      /i am (\w+)/i,
-      /i'm (\w+)/i,
-      /call me (\w+)/i,
-      /this is (\w+)/i
-    ]
-    
-    for (const pattern of namePatterns) {
-      const match = allMessages.match(pattern)
-      if (match && match[1]) {
-        info.name = match[1].charAt(0).toUpperCase() + match[1].slice(1)
-        break
-      }
-    }
-
-    // Extract email
-    const emailMatch = allMessages.match(/[\w.-]+@[\w.-]+\.\w+/)
-    if (emailMatch) info.email = emailMatch[0]
-
-    // Extract phone
-    const phoneMatch = allMessages.match(/(\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/)
-    if (phoneMatch) info.phone = phoneMatch[0]
-
-    // Extract rent/buy preference
-    if (recentMessages.includes('rent') && !recentMessages.includes('buy')) info.rent_or_buy = 'rent'
-    if (recentMessages.includes('buy') && !recentMessages.includes('rent')) info.rent_or_buy = 'buy'
-
-    // Extract area (more comprehensive)
-    const areaPatterns = [
-      /(?:in|to|around|near) ([a-zA-Z\s]+)(?:area|neighborhood|district|vancouver|burnaby|richmond|surrey)/i,
-      /(?:looking for|interested in) ([a-zA-Z\s]+)(?:area|neighborhood|district)/i,
-      /(?:downtown|westside|eastside|north vancouver|south vancouver|burnaby|richmond|surrey|coquitlam|new westminster)/i
-    ]
-    
-    for (const pattern of areaPatterns) {
-      const match = allMessages.match(pattern)
-      if (match && match[1]) {
-        info.area = match[1].trim()
-        break
-      }
-    }
-
-    // Extract amenities
-    const amenityKeywords = ['schools', 'parks', 'restaurants', 'gym', 'parking', 'transit', 'shopping', 'beach', 'ocean view', 'balcony', 'in-suite laundry']
-    const foundAmenities = amenityKeywords.filter(keyword => allMessages.includes(keyword))
-    if (foundAmenities.length > 0) {
-      info.amenities = foundAmenities
-    }
-
-    // Extract budget range
-    const budgetPatterns = [
-      /\$(\d{1,3}(?:,\d{3})*)(?:k|000)?\s*-\s*\$(\d{1,3}(?:,\d{3})*)(?:k|000)?/i,
-      /\$(\d{1,3}(?:,\d{3})*)\s*-\s*\$(\d{1,3}(?:,\d{3})*)\s*per\s*month/i,
-      /budget.*?\$(\d{1,3}(?:,\d{3})*)\s*-\s*\$(\d{1,3}(?:,\d{3})*)/i
-    ]
-    
-    for (const pattern of budgetPatterns) {
-      const match = allMessages.match(pattern)
-      if (match) {
-        const min = parseInt(match[1].replace(/,/g, ''))
-        const max = parseInt(match[2].replace(/,/g, ''))
-        if (min > 1000) {
-          info.budget_range = `$${min.toLocaleString()}-$${max.toLocaleString()}`
-        } else {
-          info.budget_range = `$${min.toLocaleString()}-$${max.toLocaleString()}/month`
-        }
-        break
-      }
-    }
-
-    // Extract urgency
-    if (recentMessages.includes('asap') || recentMessages.includes('immediately') || recentMessages.includes('urgent')) {
-      info.urgency = 'asap'
-    } else if (recentMessages.includes('within 3 months') || recentMessages.includes('soon')) {
-      info.urgency = 'within 3 months'
-    } else if (recentMessages.includes('flexible') || recentMessages.includes('no rush')) {
-      info.urgency = 'flexible'
-    }
-
-    return info
+    // Since we're now collecting info via form, we don't need to extract from messages
+    return leadInfo
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -307,8 +255,8 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
   }
 
   const handleCallRequest = () => {
-    setShowCallPrompt(false)
     setShowPhoneInput(true)
+    setShowCallPrompt(false)
   }
 
   const handlePhoneSubmit = async () => {
@@ -375,8 +323,8 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
         email: leadFormData.email,
         phone: leadFormData.phone,
         rent_or_buy: leadFormData.rent_or_buy as 'rent' | 'buy',
-        area: leadFormData.area,
-        amenities: leadFormData.amenities ? leadFormData.amenities.split(',').map(a => a.trim()) : [],
+        area: leadFormData.areas.join(', '),
+        amenities: leadFormData.amenities,
         budget_range: leadFormData.budget_range,
         urgency: leadFormData.urgency
       })
@@ -390,8 +338,8 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
             email: leadFormData.email,
             phone: leadFormData.phone,
             rent_or_buy: leadFormData.rent_or_buy as 'rent' | 'buy',
-            area: leadFormData.area,
-            amenities: leadFormData.amenities ? leadFormData.amenities.split(',').map(a => a.trim()) : [],
+            area: leadFormData.areas.join(', '),
+            amenities: leadFormData.amenities,
             budget_range: leadFormData.budget_range,
             urgency: leadFormData.urgency,
             lead_score: score,
@@ -402,13 +350,25 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
 
         if (error) throw error
 
+        // Set lead info for AI context
+        setLeadInfo({
+          name: leadFormData.name,
+          email: leadFormData.email,
+          phone: leadFormData.phone,
+          rent_or_buy: leadFormData.rent_or_buy as 'rent' | 'buy',
+          area: leadFormData.areas.join(', '),
+          amenities: leadFormData.amenities,
+          budget_range: leadFormData.budget_range,
+          urgency: leadFormData.urgency
+        })
+
         // Add success message
         const successMessage: ChatMessage = {
           role: 'assistant',
-          content: `Perfect! I have saved your information. Your lead score is ${score}/10. I will be in touch soon with personalized listings that match your criteria. Is there anything else you would like to know about the market?`
+          content: `Perfect! Thank you for sharing your preferences. I have saved your information and your lead score is ${score}/10. Now let me help you find the perfect home that matches your criteria. What specific questions do you have about the market?`
         }
         setMessages(prev => [...prev, successMessage])
-        setShowLeadCollection(false)
+        setShowInitialForm(false)
       }
 
     } catch (error) {
@@ -636,8 +596,8 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
               </motion.div>
             )}
 
-            {/* Lead collection card */}
-            {showLeadCollection && (
+            {/* Initial form */}
+            {showInitialForm && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -650,33 +610,35 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
                     </div>
                     <div className="w-full">
                       <p className="text-sm text-gray-800 font-medium mb-3">
-                        Great! I have gathered some information from our conversation. Let me save your details so I can send you personalized listings:
+                        Hi! I am Roy, your real estate expert. To help you find the perfect home, I need to understand your preferences. Please fill out this quick form:
                       </p>
-                      <div className="space-y-3">
-                        <div className="flex space-x-2">
-                          <div className="flex-1">
-                            <label className="block text-xs text-gray-600 mb-1">Name</label>
-                            <input
-                              type="text"
-                              value={leadFormData.name}
-                              onChange={(e) => setLeadFormData(prev => ({ ...prev, name: e.target.value }))}
-                              placeholder="Your name"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
+                      <div className="space-y-4">
+                        {/* Basic Info */}
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium text-gray-700">Basic Information</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Name *</label>
+                              <input
+                                type="text"
+                                value={leadFormData.name}
+                                onChange={(e) => setLeadFormData(prev => ({ ...prev, name: e.target.value }))}
+                                placeholder="Your name"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Email *</label>
+                              <input
+                                type="email"
+                                value={leadFormData.email}
+                                onChange={(e) => setLeadFormData(prev => ({ ...prev, email: e.target.value }))}
+                                placeholder="your@email.com"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              />
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <label className="block text-xs text-gray-600 mb-1">Email</label>
-                            <input
-                              type="email"
-                              value={leadFormData.email}
-                              onChange={(e) => setLeadFormData(prev => ({ ...prev, email: e.target.value }))}
-                              placeholder="your@email.com"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex space-x-2">
-                          <div className="flex-1">
+                          <div>
                             <label className="block text-xs text-gray-600 mb-1">Phone (optional)</label>
                             <input
                               type="tel"
@@ -686,73 +648,132 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                           </div>
-                          <div className="flex-1">
-                            <label className="block text-xs text-gray-600 mb-1">Rent or Buy</label>
-                            <select
-                              value={leadFormData.rent_or_buy}
-                              onChange={(e) => setLeadFormData(prev => ({ ...prev, rent_or_buy: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                              <option value="">Select...</option>
-                              <option value="rent">Rent</option>
-                              <option value="buy">Buy</option>
-                            </select>
+                        </div>
+
+                        {/* Rent or Buy */}
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium text-gray-700">What are you looking for? *</h4>
+                          <div className="flex space-x-4">
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="rent_or_buy"
+                                value="rent"
+                                checked={leadFormData.rent_or_buy === 'rent'}
+                                onChange={(e) => setLeadFormData(prev => ({ ...prev, rent_or_buy: e.target.value }))}
+                                className="text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="text-sm">Rent</span>
+                            </label>
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="rent_or_buy"
+                                value="buy"
+                                checked={leadFormData.rent_or_buy === 'buy'}
+                                onChange={(e) => setLeadFormData(prev => ({ ...prev, rent_or_buy: e.target.value }))}
+                                className="text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="text-sm">Buy</span>
+                            </label>
                           </div>
                         </div>
-                        <div className="flex space-x-2">
-                          <div className="flex-1">
-                            <label className="block text-xs text-gray-600 mb-1">Preferred Area</label>
-                            <input
-                              type="text"
-                              value={leadFormData.area}
-                              onChange={(e) => setLeadFormData(prev => ({ ...prev, area: e.target.value }))}
-                              placeholder="e.g., Downtown, Westside"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <label className="block text-xs text-gray-600 mb-1">Budget Range</label>
-                            <input
-                              type="text"
-                              value={leadFormData.budget_range}
-                              onChange={(e) => setLeadFormData(prev => ({ ...prev, budget_range: e.target.value }))}
-                              placeholder="e.g., $2000-$3000/month"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex space-x-2">
-                          <div className="flex-1">
-                            <label className="block text-xs text-gray-600 mb-1">Amenities (comma separated)</label>
-                            <input
-                              type="text"
-                              value={leadFormData.amenities}
-                              onChange={(e) => setLeadFormData(prev => ({ ...prev, amenities: e.target.value }))}
-                              placeholder="e.g., gym, parking, schools"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <label className="block text-xs text-gray-600 mb-1">Timeline</label>
-                            <select
-                              value={leadFormData.urgency}
-                              onChange={(e) => setLeadFormData(prev => ({ ...prev, urgency: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                              <option value="">Select...</option>
-                              <option value="asap">ASAP</option>
-                              <option value="within 3 months">Within 3 months</option>
-                              <option value="flexible">Flexible</option>
-                            </select>
+
+                        {/* Areas */}
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium text-gray-700">Preferred Areas (select all that apply)</h4>
+                          <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                            {areaOptions.map((area) => (
+                              <label key={area} className="flex items-center space-x-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={leadFormData.areas.includes(area)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setLeadFormData(prev => ({ ...prev, areas: [...prev.areas, area] }))
+                                    } else {
+                                      setLeadFormData(prev => ({ ...prev, areas: prev.areas.filter(a => a !== area) }))
+                                    }
+                                  }}
+                                  className="text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-xs">{area}</span>
+                              </label>
+                            ))}
                           </div>
                         </div>
+
+                        {/* Budget */}
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium text-gray-700">Budget Range *</h4>
+                          <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
+                            {budgetOptions.map((budget) => (
+                              <label key={budget} className="flex items-center space-x-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="budget_range"
+                                  value={budget}
+                                  checked={leadFormData.budget_range === budget}
+                                  onChange={(e) => setLeadFormData(prev => ({ ...prev, budget_range: e.target.value }))}
+                                  className="text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm">{budget}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Amenities */}
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium text-gray-700">Important Amenities (select all that apply)</h4>
+                          <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                            {amenityOptions.map((amenity) => (
+                              <label key={amenity} className="flex items-center space-x-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={leadFormData.amenities.includes(amenity)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setLeadFormData(prev => ({ ...prev, amenities: [...prev.amenities, amenity] }))
+                                    } else {
+                                      setLeadFormData(prev => ({ ...prev, amenities: prev.amenities.filter(a => a !== amenity) }))
+                                    }
+                                  }}
+                                  className="text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-xs">{amenity}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Timeline */}
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium text-gray-700">Timeline</h4>
+                          <div className="grid grid-cols-1 gap-2">
+                            {urgencyOptions.map((urgency) => (
+                              <label key={urgency} className="flex items-center space-x-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="urgency"
+                                  value={urgency}
+                                  checked={leadFormData.urgency === urgency}
+                                  onChange={(e) => setLeadFormData(prev => ({ ...prev, urgency: e.target.value }))}
+                                  className="text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm">{urgency}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
                         <button
                           onClick={handleLeadSubmit}
-                          disabled={isSavingLead || !leadFormData.name || !leadFormData.email || !leadFormData.rent_or_buy}
+                          disabled={isSavingLead || !leadFormData.name || !leadFormData.email || !leadFormData.rent_or_buy || !leadFormData.budget_range}
                           className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 clickable disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <User className="w-4 h-4" />
-                          <span>{isSavingLead ? 'Saving...' : 'Save My Information'}</span>
+                          <span>{isSavingLead ? 'Saving...' : 'Start Chatting with Roy'}</span>
                         </button>
                       </div>
                     </div>
