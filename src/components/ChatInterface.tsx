@@ -36,7 +36,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
     if (isOpen && messages.length === 0) {
       const welcomeMessage: ChatMessage = {
         role: 'assistant',
-        content: "Hey there! Are you excited to embark on your search for a new home? I&apos;m Roy, I will be your local real estate expert. How can i help you today?"
+        content: "Hey there! Are you excited to embark on your search for a new home? I am Roy, I will be your local real estate expert. How can i help you today?"
       }
       setMessages([welcomeMessage])
       setMessageCount(1)
@@ -168,7 +168,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       console.error('Error sending message:', error)
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: "I&apos;m having trouble connecting right now. Could you try again in a moment?"
+        content: "I am having trouble connecting right now. Could you try again in a moment?"
       }
       setMessages(prev => [...prev, errorMessage])
     } finally {
@@ -184,7 +184,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
     const conversation = messages.map(m => m.content).join(' ').toLowerCase()
     
     // Extract name (basic pattern)
-    const nameMatch = conversation.match(/my name is (\w+)/i) || conversation.match(/i&apos;m (\w+)/i)
+    const nameMatch = conversation.match(/my name is (\w+)/i) || conversation.match(/i am (\w+)/i)
     if (nameMatch) info.name = nameMatch[1]
 
     // Extract email
@@ -249,7 +249,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       if (response.ok) {
         const callMessage: ChatMessage = {
           role: 'assistant',
-          content: `Perfect! I&apos;m calling you now at ${phoneNumber}. Please answer your phone - I&apos;ll be calling you within the next minute to discuss your options and show you some amazing listings!`
+          content: `Perfect! I am calling you now at ${phoneNumber}. Please answer your phone - I will be calling you within the next minute to discuss your options and show you some amazing listings!`
         }
         setMessages(prev => [...prev, callMessage])
       } else {
@@ -259,7 +259,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       console.error('Error initiating call:', error)
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: "I&apos;m having trouble initiating the call right now. Please try again in a moment, or feel free to call me directly!"
+        content: "I am having trouble initiating the call right now. Please try again in a moment, or feel free to call me directly!"
       }
       setMessages(prev => [...prev, errorMessage])
     } finally {
@@ -392,10 +392,10 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
                     <AlertCircle className="w-4 h-4 text-yellow-600 mt-1 flex-shrink-0" />
                     <div>
                       <p className="text-sm text-gray-800 font-medium mb-2">
-                        Great conversation! Let&apos;s take this to the next level.
+                        Great conversation! Let us take this to the next level.
                       </p>
                       <p className="text-sm text-gray-600 mb-3">
-                                                  I&apos;d love to give you a call to discuss your options in detail and show you some amazing listings that match your criteria.
+                                                  I would love to give you a call to discuss your options in detail and show you some amazing listings that match your criteria.
                       </p>
                       <button
                         onClick={handleCallRequest}
@@ -424,7 +424,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
                     </div>
                     <div className="w-full">
                       <p className="text-sm text-gray-800 font-medium mb-3">
-                        Perfect! What&apos;s your phone number so I can call you?
+                        Perfect! What is your phone number so I can call you?
                       </p>
                       <div className="flex space-x-2">
                         <input
