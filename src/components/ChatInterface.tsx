@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Send, Phone, AlertCircle, Download, User, Mail, MapPin, DollarSign, Calendar, Check } from 'lucide-react'
+import { Send, Phone, AlertCircle, Download, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChatMessage, LeadInfo } from '@/lib/ai'
 import { supabase } from '@/lib/supabase'
@@ -245,7 +245,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       }
 
       // Update lead info based on conversation
-      const updatedLeadInfo = extractLeadInfo(allMessages)
+      const updatedLeadInfo = extractLeadInfo()
       setLeadInfo(updatedLeadInfo)
 
     } catch (error) {
@@ -261,7 +261,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
     }
   }
 
-  const extractLeadInfo = (messages: ChatMessage[]): LeadInfo => {
+  const extractLeadInfo = (): LeadInfo => {
     // Since we're now collecting info via form, we don't need to extract from messages
     return leadInfo
   }
@@ -308,7 +308,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
         throw new Error('Failed to initiate call')
       }
 
-      const result = await response.json()
+      // Call was initiated successfully
       
       // Add success message
       const successMessage: ChatMessage = {
