@@ -44,9 +44,9 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
     }
   }, [isOpen, messages.length])
 
-  // Check if we should show call prompt
+  // Check if we should show call prompt at 30 messages
   useEffect(() => {
-    if (messageCount >= 40 && !showCallPrompt) {
+    if (messageCount >= 30 && !showCallPrompt) {
       setShowCallPrompt(true)
       setChatCompleted(true)
     }

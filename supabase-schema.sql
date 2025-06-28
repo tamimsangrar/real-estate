@@ -50,6 +50,9 @@ CREATE POLICY "Allow public insert access to leads" ON leads
 CREATE POLICY "Allow public update access to leads" ON leads
   FOR UPDATE USING (true);
 
+CREATE POLICY "Allow public delete access to leads" ON leads
+  FOR DELETE USING (true);
+
 CREATE POLICY "Allow public read access to conversations" ON conversations
   FOR SELECT USING (true);
 

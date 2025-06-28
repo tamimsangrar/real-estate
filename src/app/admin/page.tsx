@@ -81,18 +81,27 @@ export default function AdminDashboard() {
     }
 
     try {
-      const { error } = await supabase
+      console.log('Attempting to delete lead:', leadId)
+      
+      const { data, error } = await supabase
         .from('leads')
         .delete()
         .eq('id', leadId)
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase delete error:', error)
+        throw error
+      }
+      
+      console.log('Delete successful:', data)
       
       // Refresh leads after deletion
-      fetchLeads()
+      await fetchLeads()
+      alert('Lead deleted successfully!')
     } catch (error) {
       console.error('Error deleting lead:', error)
-      alert('Failed to delete lead. Please try again.')
+      alert(`Failed to delete lead: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
