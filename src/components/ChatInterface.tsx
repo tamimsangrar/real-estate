@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Send, Phone, AlertCircle, Download } from 'lucide-react'
+import { Send, Phone, AlertCircle, Download, User, Mail, MapPin, DollarSign, Calendar } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChatMessage, LeadInfo } from '@/lib/ai'
 import { supabase } from '@/lib/supabase'
@@ -24,6 +24,18 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
   const [showPhoneInput, setShowPhoneInput] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [isCallingAPI, setIsCallingAPI] = useState(false)
+  const [showLeadCollection, setShowLeadCollection] = useState(false)
+  const [isSavingLead, setIsSavingLead] = useState(false)
+  const [leadFormData, setLeadFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    rent_or_buy: '',
+    area: '',
+    amenities: '',
+    budget_range: '',
+    urgency: ''
+  })
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom
@@ -51,6 +63,25 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       setChatCompleted(true)
     }
   }, [messageCount, showCallPrompt])
+
+  // Check if we should show lead collection card
+  useEffect(() => {
+    const hasEnoughInfo = leadInfo.name && leadInfo.email && leadInfo.rent_or_buy && leadInfo.area && leadInfo.budget_range
+    if (hasEnoughInfo && !showLeadCollection && messageCount >= 15) {
+      setShowLeadCollection(true)
+      // Pre-fill form with extracted data
+      setLeadFormData({
+        name: leadInfo.name || '',
+        email: leadInfo.email || '',
+        phone: leadInfo.phone || '',
+        rent_or_buy: leadInfo.rent_or_buy || '',
+        area: leadInfo.area || '',
+        amenities: leadInfo.amenities?.join(', ') || '',
+        budget_range: leadInfo.budget_range || '',
+        urgency: leadInfo.urgency || ''
+      })
+    }
+  }, [leadInfo, showLeadCollection, messageCount])
 
   const sendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return
@@ -180,24 +211,90 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
   const extractLeadInfo = (messages: ChatMessage[]): LeadInfo => {
     const info: LeadInfo = {}
     
-    // Simple extraction logic - in production, you'd want more sophisticated NLP
-    const conversation = messages.map(m => m.content).join(' ').toLowerCase()
+    // Get the last few messages for better context
+    const recentMessages = messages.slice(-6).map(m => m.content).join(' ').toLowerCase()
+    const allMessages = messages.map(m => m.content).join(' ').toLowerCase()
     
-    // Extract name (basic pattern)
-    const nameMatch = conversation.match(/my name is (\w+)/i) || conversation.match(/i am (\w+)/i)
-    if (nameMatch) info.name = nameMatch[1]
+    // Extract name (multiple patterns)
+    const namePatterns = [
+      /my name is (\w+)/i,
+      /i am (\w+)/i,
+      /i'm (\w+)/i,
+      /call me (\w+)/i,
+      /this is (\w+)/i
+    ]
+    
+    for (const pattern of namePatterns) {
+      const match = allMessages.match(pattern)
+      if (match && match[1]) {
+        info.name = match[1].charAt(0).toUpperCase() + match[1].slice(1)
+        break
+      }
+    }
 
     // Extract email
-    const emailMatch = conversation.match(/[\w.-]+@[\w.-]+\.\w+/)
+    const emailMatch = allMessages.match(/[\w.-]+@[\w.-]+\.\w+/)
     if (emailMatch) info.email = emailMatch[0]
 
-    // Extract rent/buy preference
-    if (conversation.includes('rent')) info.rent_or_buy = 'rent'
-    if (conversation.includes('buy')) info.rent_or_buy = 'buy'
+    // Extract phone
+    const phoneMatch = allMessages.match(/(\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/)
+    if (phoneMatch) info.phone = phoneMatch[0]
 
-    // Extract area (basic)
-    const areaMatch = conversation.match(/(?:in|to|around) ([a-zA-Z\s]+)(?:area|neighborhood|district)/i)
-    if (areaMatch) info.area = areaMatch[1].trim()
+    // Extract rent/buy preference
+    if (recentMessages.includes('rent') && !recentMessages.includes('buy')) info.rent_or_buy = 'rent'
+    if (recentMessages.includes('buy') && !recentMessages.includes('rent')) info.rent_or_buy = 'buy'
+
+    // Extract area (more comprehensive)
+    const areaPatterns = [
+      /(?:in|to|around|near) ([a-zA-Z\s]+)(?:area|neighborhood|district|vancouver|burnaby|richmond|surrey)/i,
+      /(?:looking for|interested in) ([a-zA-Z\s]+)(?:area|neighborhood|district)/i,
+      /(?:downtown|westside|eastside|north vancouver|south vancouver|burnaby|richmond|surrey|coquitlam|new westminster)/i
+    ]
+    
+    for (const pattern of areaPatterns) {
+      const match = allMessages.match(pattern)
+      if (match && match[1]) {
+        info.area = match[1].trim()
+        break
+      }
+    }
+
+    // Extract amenities
+    const amenityKeywords = ['schools', 'parks', 'restaurants', 'gym', 'parking', 'transit', 'shopping', 'beach', 'ocean view', 'balcony', 'in-suite laundry']
+    const foundAmenities = amenityKeywords.filter(keyword => allMessages.includes(keyword))
+    if (foundAmenities.length > 0) {
+      info.amenities = foundAmenities
+    }
+
+    // Extract budget range
+    const budgetPatterns = [
+      /\$(\d{1,3}(?:,\d{3})*)(?:k|000)?\s*-\s*\$(\d{1,3}(?:,\d{3})*)(?:k|000)?/i,
+      /\$(\d{1,3}(?:,\d{3})*)\s*-\s*\$(\d{1,3}(?:,\d{3})*)\s*per\s*month/i,
+      /budget.*?\$(\d{1,3}(?:,\d{3})*)\s*-\s*\$(\d{1,3}(?:,\d{3})*)/i
+    ]
+    
+    for (const pattern of budgetPatterns) {
+      const match = allMessages.match(pattern)
+      if (match) {
+        const min = parseInt(match[1].replace(/,/g, ''))
+        const max = parseInt(match[2].replace(/,/g, ''))
+        if (min > 1000) {
+          info.budget_range = `$${min.toLocaleString()}-$${max.toLocaleString()}`
+        } else {
+          info.budget_range = `$${min.toLocaleString()}-$${max.toLocaleString()}/month`
+        }
+        break
+      }
+    }
+
+    // Extract urgency
+    if (recentMessages.includes('asap') || recentMessages.includes('immediately') || recentMessages.includes('urgent')) {
+      info.urgency = 'asap'
+    } else if (recentMessages.includes('within 3 months') || recentMessages.includes('soon')) {
+      info.urgency = 'within 3 months'
+    } else if (recentMessages.includes('flexible') || recentMessages.includes('no rush')) {
+      info.urgency = 'flexible'
+    }
 
     return info
   }
@@ -215,25 +312,19 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
   }
 
   const handlePhoneSubmit = async () => {
-    if (!phoneNumber.trim()) return
-    
+    if (!phoneNumber.trim() || isCallingAPI) return
+
     setIsCallingAPI(true)
-    
     try {
-      // Update lead with phone number and status
+      // Update lead with phone number
       if (leadId) {
         await supabase
           .from('leads')
-          .update({
-            phone: phoneNumber,
-            status: 'contacted',
-            phone_call_made: true,
-            updated_at: new Date().toISOString()
-          })
+          .update({ phone: phoneNumber })
           .eq('id', leadId)
       }
 
-      // Call ElevenLabs API
+      // Make the call via ElevenLabs API
       const response = await fetch('/api/elevenlabs-call', {
         method: 'POST',
         headers: {
@@ -242,31 +333,126 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
         body: JSON.stringify({
           phoneNumber,
           leadId,
-          conversation: messages.map(m => `${m.role === 'user' ? 'User' : 'Roy'}: ${m.content}`).join('\n')
+          conversationSummary: messages.map(m => `${m.role}: ${m.content}`).join('\n')
         }),
       })
 
-      if (response.ok) {
-        const callMessage: ChatMessage = {
-          role: 'assistant',
-          content: `Perfect! I am calling you now at ${phoneNumber}. Please answer your phone - I will be calling you within the next minute to discuss your options and show you some amazing listings!`
-        }
-        setMessages(prev => [...prev, callMessage])
-      } else {
+      if (!response.ok) {
         throw new Error('Failed to initiate call')
       }
+
+      const result = await response.json()
+      
+      // Add success message
+      const successMessage: ChatMessage = {
+        role: 'assistant',
+        content: `Perfect! I am calling you now at ${phoneNumber}. You should receive a call in the next few minutes. Looking forward to helping you find your perfect home!`
+      }
+      setMessages(prev => [...prev, successMessage])
+      setShowPhoneInput(false)
+      setPhoneNumber('')
+
     } catch (error) {
-      console.error('Error initiating call:', error)
+      console.error('Error making call:', error)
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: "I am having trouble initiating the call right now. Please try again in a moment, or feel free to call me directly!"
+        content: "I am having trouble making the call right now. Please try again in a moment or contact me directly."
       }
       setMessages(prev => [...prev, errorMessage])
     } finally {
       setIsCallingAPI(false)
-      setShowPhoneInput(false)
-      setChatCompleted(true)
     }
+  }
+
+  const handleLeadSubmit = async () => {
+    if (isSavingLead) return
+
+    setIsSavingLead(true)
+    try {
+      // Calculate lead score
+      const score = calculateLeadScore({
+        name: leadFormData.name,
+        email: leadFormData.email,
+        phone: leadFormData.phone,
+        rent_or_buy: leadFormData.rent_or_buy as 'rent' | 'buy',
+        area: leadFormData.area,
+        amenities: leadFormData.amenities ? leadFormData.amenities.split(',').map(a => a.trim()) : [],
+        budget_range: leadFormData.budget_range,
+        urgency: leadFormData.urgency
+      })
+
+      // Update lead with collected information
+      if (leadId) {
+        const { error } = await supabase
+          .from('leads')
+          .update({
+            name: leadFormData.name,
+            email: leadFormData.email,
+            phone: leadFormData.phone,
+            rent_or_buy: leadFormData.rent_or_buy as 'rent' | 'buy',
+            area: leadFormData.area,
+            amenities: leadFormData.amenities ? leadFormData.amenities.split(',').map(a => a.trim()) : [],
+            budget_range: leadFormData.budget_range,
+            urgency: leadFormData.urgency,
+            lead_score: score,
+            conversation_summary: messages.map(m => `${m.role}: ${m.content}`).join('\n'),
+            status: 'new'
+          })
+          .eq('id', leadId)
+
+        if (error) throw error
+
+        // Add success message
+        const successMessage: ChatMessage = {
+          role: 'assistant',
+          content: `Perfect! I have saved your information. Your lead score is ${score}/10. I will be in touch soon with personalized listings that match your criteria. Is there anything else you would like to know about the market?`
+        }
+        setMessages(prev => [...prev, successMessage])
+        setShowLeadCollection(false)
+      }
+
+    } catch (error) {
+      console.error('Error saving lead:', error)
+      const errorMessage: ChatMessage = {
+        role: 'assistant',
+        content: "I am having trouble saving your information right now. Please try again in a moment."
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsSavingLead(false)
+    }
+  }
+
+  const calculateLeadScore = (info: LeadInfo): number => {
+    let score = 0
+
+    // Basic information (0-3 points)
+    if (info.name) score += 1
+    if (info.email) score += 1
+    if (info.phone) score += 1
+
+    // Property preferences (0-3 points)
+    if (info.rent_or_buy) score += 1
+    if (info.area) score += 1
+    if (info.amenities && info.amenities.length > 0) score += 1
+
+    // Budget and urgency (0-4 points)
+    if (info.budget_range) {
+      if (info.budget_range.includes('500k') || info.budget_range.includes('750k') || info.budget_range.includes('1M')) {
+        score += 2
+      } else {
+        score += 1
+      }
+    }
+    if (info.urgency) {
+      if (info.urgency.includes('asap') || info.urgency.includes('immediately')) {
+        score += 2
+      } else {
+        score += 1
+      }
+    }
+
+    return Math.min(score, 10)
   }
 
   const downloadConversation = () => {
@@ -442,6 +628,131 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
                         >
                           <Phone className="w-4 h-4" />
                           <span>{isCallingAPI ? 'Calling...' : 'Call Me'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Lead collection card */}
+            {showLeadCollection && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex justify-start"
+              >
+                <div className="message-bubble message-assistant">
+                  <div className="flex items-start space-x-2">
+                    <div className="w-6 h-6 bg-gray-900 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      <img src="/roy.png" alt="Roy" className="w-6 h-6 rounded-full object-cover" />
+                    </div>
+                    <div className="w-full">
+                      <p className="text-sm text-gray-800 font-medium mb-3">
+                        Great! I have gathered some information from our conversation. Let me save your details so I can send you personalized listings:
+                      </p>
+                      <div className="space-y-3">
+                        <div className="flex space-x-2">
+                          <div className="flex-1">
+                            <label className="block text-xs text-gray-600 mb-1">Name</label>
+                            <input
+                              type="text"
+                              value={leadFormData.name}
+                              onChange={(e) => setLeadFormData(prev => ({ ...prev, name: e.target.value }))}
+                              placeholder="Your name"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-xs text-gray-600 mb-1">Email</label>
+                            <input
+                              type="email"
+                              value={leadFormData.email}
+                              onChange={(e) => setLeadFormData(prev => ({ ...prev, email: e.target.value }))}
+                              placeholder="your@email.com"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <div className="flex-1">
+                            <label className="block text-xs text-gray-600 mb-1">Phone (optional)</label>
+                            <input
+                              type="tel"
+                              value={leadFormData.phone}
+                              onChange={(e) => setLeadFormData(prev => ({ ...prev, phone: e.target.value }))}
+                              placeholder="(555) 123-4567"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-xs text-gray-600 mb-1">Rent or Buy</label>
+                            <select
+                              value={leadFormData.rent_or_buy}
+                              onChange={(e) => setLeadFormData(prev => ({ ...prev, rent_or_buy: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                              <option value="">Select...</option>
+                              <option value="rent">Rent</option>
+                              <option value="buy">Buy</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <div className="flex-1">
+                            <label className="block text-xs text-gray-600 mb-1">Preferred Area</label>
+                            <input
+                              type="text"
+                              value={leadFormData.area}
+                              onChange={(e) => setLeadFormData(prev => ({ ...prev, area: e.target.value }))}
+                              placeholder="e.g., Downtown, Westside"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-xs text-gray-600 mb-1">Budget Range</label>
+                            <input
+                              type="text"
+                              value={leadFormData.budget_range}
+                              onChange={(e) => setLeadFormData(prev => ({ ...prev, budget_range: e.target.value }))}
+                              placeholder="e.g., $2000-$3000/month"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <div className="flex-1">
+                            <label className="block text-xs text-gray-600 mb-1">Amenities (comma separated)</label>
+                            <input
+                              type="text"
+                              value={leadFormData.amenities}
+                              onChange={(e) => setLeadFormData(prev => ({ ...prev, amenities: e.target.value }))}
+                              placeholder="e.g., gym, parking, schools"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-xs text-gray-600 mb-1">Timeline</label>
+                            <select
+                              value={leadFormData.urgency}
+                              onChange={(e) => setLeadFormData(prev => ({ ...prev, urgency: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                              <option value="">Select...</option>
+                              <option value="asap">ASAP</option>
+                              <option value="within 3 months">Within 3 months</option>
+                              <option value="flexible">Flexible</option>
+                            </select>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleLeadSubmit}
+                          disabled={isSavingLead || !leadFormData.name || !leadFormData.email || !leadFormData.rent_or_buy}
+                          className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 clickable disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <User className="w-4 h-4" />
+                          <span>{isSavingLead ? 'Saving...' : 'Save My Information'}</span>
                         </button>
                       </div>
                     </div>
