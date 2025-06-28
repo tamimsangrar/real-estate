@@ -99,6 +99,13 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
 
       // Get AI response via API
       const allMessages = [...messages, userMessage]
+      
+      console.log('🔄 Sending chat request...', {
+        messageCount: messageCount + 1,
+        messagesLength: allMessages.length,
+        leadInfo: Object.keys(leadInfo)
+      })
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -112,11 +119,21 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
         }),
       })
 
+      console.log('📡 Response status:', response.status)
+
       if (!response.ok) {
-        throw new Error('Failed to get response')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('❌ API Error:', errorData)
+        throw new Error(`API Error (${response.status}): ${errorData.error || 'Unknown error'}\nDetails: ${errorData.details || 'No additional details'}`)
       }
 
       const data = await response.json()
+      console.log('✅ API Response received:', {
+        hasResponses: !!data.responses,
+        responseCount: data.responses?.length,
+        hasDebug: !!data.debug,
+        debug: data.debug
+      })
       
       // Handle multiple responses from AI
       const responses = data.responses || [data.response]
