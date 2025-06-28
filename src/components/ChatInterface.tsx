@@ -46,7 +46,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
 
   // Check if we should show call prompt
   useEffect(() => {
-    if (messageCount >= 20 && !showCallPrompt) {
+    if (messageCount >= 40 && !showCallPrompt) {
       setShowCallPrompt(true)
       setChatCompleted(true)
     }
@@ -56,7 +56,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
     if (!inputMessage.trim() || isLoading) return
 
     // Check message limit
-    if (messageCount >= 20) {
+    if (messageCount >= 40) {
       setShowCallPrompt(true)
       setChatCompleted(true)
       return
@@ -329,7 +329,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
             </div>
             {/* Message counter */}
             <div className="mt-2 text-xs text-gray-300">
-              Messages: {messageCount}/20
+              Messages: {messageCount}/40
             </div>
           </div>
 
@@ -455,7 +455,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
 
           {/* Input */}
           <div className="chat-input">
-            {messageCount >= 20 ? (
+            {messageCount >= 40 ? (
               <div className="text-center text-gray-500 text-sm">
                 <Phone className="w-4 h-4 mx-auto mb-2" />
                 <p>Chat limit reached. Please request a call to continue.</p>

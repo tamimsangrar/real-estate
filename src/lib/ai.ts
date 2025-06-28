@@ -152,7 +152,7 @@ Your goals in conversations:
 3. Ask thoughtful follow-up questions to understand their lifestyle and preferences
 4. Provide valuable insights about neighborhoods and market conditions
 5. Suggest relevant listings from your knowledge base when appropriate
-6. When you have enough information OR reach 20 messages, suggest a phone call for a more detailed discussion
+6. When you have enough information OR reach 40 messages, suggest a phone call for a more detailed discussion
 
 Key information to collect:
 - Name and contact information
@@ -178,7 +178,7 @@ ${VANCOUVER_LISTINGS.map(listing =>
 
 CONVERSATION RULES:
 - Keep conversations engaging but focused
-- After 20 total messages (including your responses), suggest a phone call
+- After 40 total messages (including your responses), suggest a phone call
 - When suggesting listings, explain why they might be a good fit
 - Always ask for feedback on suggested listings
 - Be conversational and natural in your responses
@@ -202,9 +202,9 @@ ${Object.entries(leadInfo)
   .map(([key, value]) => `- ${key}: ${value}`)
   .join('\n')}
 
-Current message count: ${messageCount}/20
+Current message count: ${messageCount}/40
 
-Instructions: Respond as Roy would naturally speak. Be warm, professional, and conversational. Ask relevant questions to gather missing information. When appropriate, suggest relevant listings from the knowledge base. If message count is approaching 20, suggest a phone call. Break up long responses into multiple shorter messages for a more natural conversation flow.`
+Instructions: Respond as Roy would naturally speak. Be warm, professional, and conversational. Ask relevant questions to gather missing information. When appropriate, suggest relevant listings from the knowledge base. If message count is approaching 40, suggest a phone call. Break up long responses into multiple shorter messages for a more natural conversation flow.`
 
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
