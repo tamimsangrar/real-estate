@@ -136,8 +136,8 @@ export async function POST(request: NextRequest) {
             amenities: leadInfo.amenities || [],
             budget_range: leadInfo.budget_range || '',
             urgency: leadInfo.urgency || '',
-            score: leadScore,
-            status: 'active',
+            lead_score: leadScore,
+            status: 'contacted',
             conversation_summary: messages.slice(-3).map(m => m.content).join('; '),
             notes: `Last message count: ${messageCount}`
           })
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
             amenities: leadInfo.amenities || [],
             budget_range: leadInfo.budget_range || '',
             urgency: leadInfo.urgency || '',
-            score: leadScore,
+            lead_score: leadScore,
             status: 'new',
             conversation_summary: messages.slice(-3).map(m => m.content).join('; '),
             notes: `Initial message count: ${messageCount}`

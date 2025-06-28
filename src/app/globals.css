@@ -158,9 +158,8 @@ html {
 .chat-messages {
   background: #fafafa;
   padding: 20px;
-  height: 500px;
+  height: 400px;
   overflow-y: auto;
-  max-height: 60vh;
 }
 
 .chat-input {
