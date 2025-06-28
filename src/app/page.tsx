@@ -21,14 +21,14 @@ export default function HomePage() {
     return `${dd}.${mm}.${yy}`
   }
 
-  const handleLogoClick = (e: any) => {
+  const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault()
     setShowPassword(true)
     setError('')
     setPassword('')
   }
 
-  const handlePasswordSubmit = (e: any) => {
+  const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (password === getToday()) {
       setShowPassword(false)

@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Home, MapPin, DollarSign, Bed, Bath, ExternalLink, Download } from 'lucide-react'
+import { Home, MapPin, Bed, Bath, ExternalLink, Download } from 'lucide-react'
 
 interface Listing {
   id: number

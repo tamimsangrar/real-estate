@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Send, Phone, User, Bot, AlertCircle, Download } from 'lucide-react'
+import { Send, Phone, AlertCircle, Download } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChatMessage, LeadInfo } from '@/lib/ai'
 import { supabase } from '@/lib/supabase'
@@ -151,7 +151,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       console.error('Error sending message:', error)
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: "I'm having trouble connecting right now. Could you try again in a moment?"
+        content: "I&apos;m having trouble connecting right now. Could you try again in a moment?"
       }
       setMessages(prev => [...prev, errorMessage])
     } finally {
@@ -232,7 +232,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       if (response.ok) {
         const callMessage: ChatMessage = {
           role: 'assistant',
-          content: `Perfect! I'm calling you now at ${phoneNumber}. Please answer your phone - I'll be calling you within the next minute to discuss your options and show you some amazing listings!`
+          content: `Perfect! I&apos;m calling you now at ${phoneNumber}. Please answer your phone - I&apos;ll be calling you within the next minute to discuss your options and show you some amazing listings!`
         }
         setMessages(prev => [...prev, callMessage])
       } else {
@@ -242,7 +242,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       console.error('Error initiating call:', error)
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: "I'm having trouble initiating the call right now. Please try again in a moment, or feel free to call me directly!"
+        content: "I&apos;m having trouble initiating the call right now. Please try again in a moment, or feel free to call me directly!"
       }
       setMessages(prev => [...prev, errorMessage])
     } finally {

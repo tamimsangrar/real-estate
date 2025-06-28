@@ -12,8 +12,6 @@ import {
   TrendingUp, 
   Calendar,
   Search,
-  Filter,
-  Eye,
   Download,
   Trash2,
   RefreshCw

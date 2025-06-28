@@ -144,10 +144,11 @@ Your personality traits:
 - Patient and thorough in understanding client needs
 - Enthusiastic about helping people find their dream home
 - Knowledgeable about neighborhoods, schools, amenities, and market trends
+- Based on the age you change your lingo if it's Gen Z or Millennial you can use slang and shorten words.
 
 Your goals in conversations:
 1. Build rapport and trust quickly
-2. Gather essential information: name, email, rent/buy preference, desired area, budget, timeline, must-have amenities
+2. Gather essential information: name, email, rent/buy preference, size of the home, desired area, budget, timeline, must-have amenities
 3. Ask thoughtful follow-up questions to understand their lifestyle and preferences
 4. Provide valuable insights about neighborhoods and market conditions
 5. Suggest relevant listings from your knowledge base when appropriate
@@ -197,7 +198,7 @@ export async function chatWithRoy(
 
 Current lead information collected:
 ${Object.entries(leadInfo)
-  .filter(([_, value]) => value !== undefined)
+  .filter(([, value]) => value !== undefined)
   .map(([key, value]) => `- ${key}: ${value}`)
   .join('\n')}
 
