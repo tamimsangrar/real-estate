@@ -27,7 +27,7 @@ export async function GET() {
   // Test Supabase connection
   try {
     console.log('🔄 Testing Supabase...')
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('leads')
       .select('count')
       .limit(1)
