@@ -96,6 +96,16 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 Chat Interface Debug:', {
+      isOpen,
+      showInitialForm,
+      messagesLength: messages.length,
+      messageCount
+    })
+  }, [isOpen, showInitialForm, messages.length, messageCount])
+
   // Initialize chat with welcome message
   useEffect(() => {
     if (isOpen && messages.length === 0 && !showInitialForm) {
