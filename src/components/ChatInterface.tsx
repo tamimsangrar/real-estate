@@ -36,7 +36,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
     if (isOpen && messages.length === 0) {
       const welcomeMessage: ChatMessage = {
         role: 'assistant',
-        content: "Hey there! Are you excited to embark on your search for a new home? I'm Roy, I will be your local real estate expert. How can i help you today?"
+        content: "Hey there! Are you excited to embark on your search for a new home? I&apos;m Roy, I will be your local real estate expert. How can i help you today?"
       }
       setMessages([welcomeMessage])
       setMessageCount(1)
@@ -167,7 +167,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
     const conversation = messages.map(m => m.content).join(' ').toLowerCase()
     
     // Extract name (basic pattern)
-    const nameMatch = conversation.match(/my name is (\w+)/i) || conversation.match(/i'm (\w+)/i)
+    const nameMatch = conversation.match(/my name is (\w+)/i) || conversation.match(/i&apos;m (\w+)/i)
     if (nameMatch) info.name = nameMatch[1]
 
     // Extract email
