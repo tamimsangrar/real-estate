@@ -375,10 +375,10 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
                     <AlertCircle className="w-4 h-4 text-yellow-600 mt-1 flex-shrink-0" />
                     <div>
                       <p className="text-sm text-gray-800 font-medium mb-2">
-                        Great conversation! Let's take this to the next level.
+                        Great conversation! Let&apos;s take this to the next level.
                       </p>
                       <p className="text-sm text-gray-600 mb-3">
-                        I'd love to give you a call to discuss your options in detail and show you some amazing listings that match your criteria.
+                                                  I&apos;d love to give you a call to discuss your options in detail and show you some amazing listings that match your criteria.
                       </p>
                       <button
                         onClick={handleCallRequest}
@@ -407,7 +407,7 @@ export default function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
                     </div>
                     <div className="w-full">
                       <p className="text-sm text-gray-800 font-medium mb-3">
-                        Perfect! What's your phone number so I can call you?
+                        Perfect! What&apos;s your phone number so I can call you?
                       </p>
                       <div className="flex space-x-2">
                         <input
